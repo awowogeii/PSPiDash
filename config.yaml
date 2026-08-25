@@ -31,13 +31,13 @@ ui:
   - iat_c
   - ect_c
   - vbat
-  tile_style: analog_digital    # digital | analog | analog_digital (big tiles)
+  tile_style: analog_digital
   theme:
-    bg: '#0b0d10'
-    tile: '#151a20'
-    fg: '#eae6da'
-    muted: '#7d8791'
-    accent: '#ffb400'
+    bg: '#10002b'
+    tile: '#240046'
+    fg: '#eae1ee'
+    muted: '#e0aaff'
+    accent: '#c77dff'
     warn: '#ff6a00'
     critical: '#e02020'
 shift_light:
