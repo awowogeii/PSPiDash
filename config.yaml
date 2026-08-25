@@ -14,8 +14,8 @@ settings:
   host: 10.42.0.1
   port: 8081
 hotspot:
-  ssid: delsol-cluster
-  password: delsol1993
+  ssid: PSPiDash
+  password: gamerword
   ip: 10.42.0.1
 ui:
   fullscreen: true
