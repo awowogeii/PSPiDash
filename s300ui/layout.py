@@ -232,6 +232,16 @@ def gauge_zones(lo, hi, warn, critical, direction="above"):
     return [z for z in zones if z[1] > z[0]]
 
 
+def danger_state(active, rpm, threshold, clear_delta=250):
+    """Hysteresis for the danger-to-manifold screen: trips at ``threshold``,
+    clears once rpm falls ``clear_delta`` below it (no strobing at the line)."""
+    if threshold is None or rpm is None:
+        return False
+    if active:
+        return rpm > threshold - clear_delta
+    return rpm >= threshold
+
+
 def tile_rows(show_rpm):
     """((x, y, w, h) big row, (x, y, w, h) small row). With the rpm bar
     hidden the rows grow to claim its space; the footer stays at y=428."""

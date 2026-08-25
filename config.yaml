@@ -32,6 +32,7 @@ ui:
   - ect_c
   - vbat
   tile_style: analog_digital
+  danger_rpm: 8000              # full-screen danger-to-manifold warning; blank/absent = off
   theme:
     bg: '#10002b'
     tile: '#240046'

@@ -134,6 +134,14 @@ def apply_patch(conf, patch):
                     if v not in TILE_STYLES:
                         raise ValueError("tile_style must be one of %s" % (TILE_STYLES,))
                     ui["tile_style"] = v
+                elif k == "danger_rpm":
+                    if v in ("", None):
+                        ui["danger_rpm"] = None
+                    else:
+                        rpm = float(v)
+                        if not 1000 <= rpm <= 20000:
+                            raise ValueError("danger_rpm must be 1000-20000 (or blank for off)")
+                        ui["danger_rpm"] = rpm
                 elif k == "theme":
                     if not isinstance(v, dict):
                         raise ValueError("theme must be a mapping")
@@ -283,6 +291,7 @@ async function loadAll(){cfg=await (await fetch('/api/config')).json();
   `<div class="row"><label>show rpm bar</label><input type="checkbox" id="ui_show_rpm" ${ui.show_rpm===false?'':'checked'}></div>`+
   `<div class="row"><label>units</label><select id="ui_units"><option ${ui.units!=='imperial'?'selected':''}>metric</option><option ${ui.units==='imperial'?'selected':''}>imperial</option></select></div>`+
   `<div class="row"><label>big tile style</label><select id="ui_tile_style">`+STYLES.map(s=>`<option ${s===(ui.tile_style||'digital')?'selected':''}>${s}</option>`).join('')+`</select></div>`+
+  `<div class="row"><label>danger-to-manifold rpm (blank = off)</label><input type="number" id="ui_danger_rpm" min="1000" max="20000" step="100" value="${ui.danger_rpm??''}"></div>`+
   TILE_DEF.tiles_big.map((d,i)=>`<div class="row"><label>big tile ${i+1}</label>${sel('big_'+i,(ui.tiles_big||TILE_DEF.tiles_big)[i]||d)}</div>`).join('')+
   TILE_DEF.tiles_small.map((d,i)=>`<div class="row"><label>small tile ${i+1}</label>${sel('small_'+i,(ui.tiles_small||TILE_DEF.tiles_small)[i]||d)}</div>`).join('')+
   Object.keys(THEME).map(k=>`<div class="row"><label>${k} colour</label><input type="color" id="th_${k}" value="${(ui.theme||{})[k]||THEME[k]}"></div>`).join('');
@@ -301,6 +310,7 @@ function val(id){const e=document.getElementById(id);return e&&e.value!==''?Numb
 async function save(){const p={mac:$('#mac').value,rfcomm_channel:val('rfcomm_channel'),poll_hz:val('poll_hz'),
  shift_light:{amber:val('shift_amber'),red:val('shift_red'),flash:val('shift_flash')},alarms:{},scaling_overrides:{},
  ui:{show_rpm:$('#ui_show_rpm').checked,units:$('#ui_units').value,tile_style:$('#ui_tile_style').value,
+  danger_rpm:$('#ui_danger_rpm').value===''?null:Number($('#ui_danger_rpm').value),
   tiles_big:TILE_DEF.tiles_big.map((d,i)=>$('#big_'+i).value),
   tiles_small:TILE_DEF.tiles_small.map((d,i)=>$('#small_'+i).value),
   theme:Object.fromEntries(Object.keys(THEME).map(k=>[k,$('#th_'+k).value]))}};

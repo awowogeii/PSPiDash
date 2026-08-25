@@ -55,7 +55,13 @@ def test_apply_patch_ui_display():
     assert new["ui"]["theme"]["warn"] == BASE["ui"]["theme"]["warn"]  # merged, not replaced
     new = st.apply_patch(BASE, {"ui": {"tile_style": "analog"}})
     assert new["ui"]["tile_style"] == "analog"
-    for bad in ({"tile_style": "steampunk"},                            # unknown style
+    new = st.apply_patch(BASE, {"ui": {"danger_rpm": 8200}})
+    assert new["ui"]["danger_rpm"] == 8200.0
+    new = st.apply_patch(new, {"ui": {"danger_rpm": None}})   # blank turns it off
+    assert new["ui"]["danger_rpm"] is None
+    for bad in ({"danger_rpm": 500},                                    # implausibly low
+                {"danger_rpm": "fast"},
+                {"tile_style": "steampunk"},                            # unknown style
                 {"theme": {"bg": "red"}},                               # not #rrggbb
                 {"theme": {"sparkles": "#ffffff"}},                     # unknown colour
                 {"theme": "dark"},                                      # not a mapping

@@ -155,6 +155,15 @@ def test_gauge_zones_from_thresholds():
     assert L.gauge_zones(0, 10, 20, 30, "above") == []
 
 
+def test_danger_state_hysteresis():
+    assert L.danger_state(False, 8000, 8000) is True    # trips at the line
+    assert L.danger_state(False, 7999, 8000) is False
+    assert L.danger_state(True, 7800, 8000) is True     # holds inside the deadband
+    assert L.danger_state(True, 7750, 8000) is False    # clears 250 below
+    assert L.danger_state(True, 9000, None) is False    # feature off
+    assert L.danger_state(True, None, 8000) is False    # no data, no takeover
+
+
 def test_grid_fills_width():
     rects = L.grid(4, 20, 0, 760, 100, gap=10)
     assert len(rects) == 4 and rects[0][0] == 20

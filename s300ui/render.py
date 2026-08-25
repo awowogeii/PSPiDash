@@ -32,6 +32,10 @@ class Cluster:
         self.units = ui.get("units", "metric")
         self.show_rpm = bool(ui.get("show_rpm", True))
         self.tile_style = L.normalize_style(ui.get("tile_style"))
+        try:
+            self.danger_rpm = float(ui.get("danger_rpm")) or None
+        except (TypeError, ValueError):
+            self.danger_rpm = None
         self.tiles_big = L.normalize_tiles(ui.get("tiles_big"), L.DEFAULT_TILES["big"])
         self.tiles_small = L.normalize_tiles(ui.get("tiles_small"), L.DEFAULT_TILES["small"])
 
@@ -214,6 +218,27 @@ class Cluster:
         for rect, key in zip(L.grid(3, *small_row), self.tiles_small):
             self.small_tile(rect, key, d, afr_available)
 
+    def danger_screen(self, rpm, blink_on):
+        """Full-screen takeover above danger_rpm: black, hazard stripes,
+        blinking red warning. Own palette on purpose — it must not blend in."""
+        red, dark = (225, 20, 20), (26, 26, 26)
+        self.screen.fill((0, 0, 0))
+        sw, sh = L.SCREEN
+        band_h, step = 44, 44
+        for band_y in (0, sh - band_h):
+            for i in range(-1, sw // step + 2):
+                x0 = i * step
+                pygame.draw.polygon(self.screen, red if i % 2 == 0 else dark,
+                                    [(x0, band_y), (x0 + step, band_y),
+                                     (x0 + step - 18, band_y + band_h),
+                                     (x0 - 18, band_y + band_h)])
+        self.text(self.f_mid, "! WARNING !", (255, 255, 255), (sw / 2, 110), "center")
+        flash = red if blink_on else (120, 10, 10)  # pulse, never fully blank
+        self.text(self.f_huge, "DANGER TO", flash, (sw / 2, 205), "center")
+        self.text(self.f_huge, "MANIFOLD", flash, (sw / 2, 315), "center")
+        self.text(self.f_mid, L.fmt(rpm, 0) + " rpm", (255, 255, 255),
+                  (sw / 2, 400), "center")
+
     def footer(self, msg, connected, blink_on):
         state = msg.get("state", "DISCONNECTED") if msg else "DISCONNECTED"
         stale = msg.get("stale", True) if msg else True
@@ -240,6 +265,11 @@ class Cluster:
         self.screen.fill(L.BG)
         d = (msg or {}).get("d") or {}
         stale = (msg or {}).get("stale", True) or not connected
+        self._danger = L.danger_state(getattr(self, "_danger", False),
+                                      d.get("rpm"), self.danger_rpm)
+        if self._danger and not stale:
+            self.danger_screen(d.get("rpm"), int(time.monotonic() * 8) % 2 == 0)
+            return
         if self.show_rpm:
             self.rpm_bar(d, blink_on)
         self.gauges(d, (msg or {}).get("afr_available", False))
