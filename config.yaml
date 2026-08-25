@@ -23,22 +23,22 @@ ui:
   units: metric
   show_rpm: true
   tiles_big:
-  - boost_psi
-  - ect_c
-  - iat_c
-  - vbat
-  tiles_small:
-  - tps
-  - shift_stage
+  - speed_kph
   - wideband_lambda
-  theme:                # any of these may be omitted; colours are #rrggbb
-    bg: "#0b0712"
-    tile: "#1d1430"
-    fg: "#efe9fa"
-    muted: "#8d7fae"
-    accent: "#a06bff"   # LIVE dot, VTEC, stage-0 shift bar
-    warn: "#ffaa1e"
-    critical: "#e5324b"
+  - tps
+  - gear
+  tiles_small:
+  - iat_c
+  - ect_c
+  - vbat
+  theme:
+    bg: '#0b0712'
+    tile: '#1d1430'
+    fg: '#efe9fa'
+    muted: '#8d7fae'
+    accent: '#a06bff'
+    warn: '#ffaa1e'
+    critical: '#e5324b'
 shift_light:
   amber: 7400
   red: 7900
@@ -53,7 +53,7 @@ alarms:
     clear: 100.0
     samples: 5
   iat_high:
-    enabled: true
+    enabled: false
     channel: iat_c
     direction: above
     warn: 55.0
@@ -70,7 +70,7 @@ alarms:
     samples: 5
     rpm_min: 1000.0
   knock_retard:
-    enabled: true
+    enabled: false
     channel: knock_retard
     direction: above
     warn: 2.0
@@ -78,7 +78,7 @@ alarms:
     clear: 1.0
     samples: 5
   knock_count:
-    enabled: true
+    enabled: false
     type: rate
     channel: knock_count
     window_s: 5
@@ -104,7 +104,7 @@ alarms:
     clear: 0.5
     samples: 1
   lean:
-    enabled: true
+    enabled: false
     channel: wideband_lambda
     direction: above
     warn: 1.05
