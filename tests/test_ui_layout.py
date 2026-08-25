@@ -58,17 +58,17 @@ def test_sensor_registry_matches_daemon_public_keys():
 
 def test_theme_default_override_and_fallback():
     try:
-        assert L.BG == (0x0B, 0x07, 0x12)          # purple/black default
-        assert L.GREEN == L.BLUE == (0xA0, 0x6B, 0xFF)
+        assert L.BG == (0x0B, 0x0D, 0x10)          # gunmetal black default
+        assert L.GREEN == L.BLUE == (0xFF, 0xB4, 0x00)  # amber accent
         assert L.STAGE_COLORS[0] == L.GREEN
         L.set_theme({"bg": "#102030", "accent": [1, 2, 3], "warn": "junk",
                      "nonsense": "#ffffff"})
         assert L.BG == (0x10, 0x20, 0x30)
         assert L.GREEN == (1, 2, 3) and L.STAGE_COLORS[0] == (1, 2, 3)
-        assert L.AMBER == (0xFF, 0xAA, 0x1E)       # bad value keeps default
+        assert L.AMBER == (0xFF, 0x6A, 0x00)       # bad value keeps default
     finally:
         L.set_theme()
-    assert L.BG == (0x0B, 0x07, 0x12)
+    assert L.BG == (0x0B, 0x0D, 0x10)
 
 
 def test_parse_color():
@@ -114,6 +114,45 @@ def test_tile_rows_fit_between_rpm_and_footer():
         assert small[1] + small[3] < 428         # footer starts at 428
     big, small = L.tile_rows(False)
     assert big[1] < 100 and big[3] > 200         # hidden rpm frees real space
+
+
+def test_sensor_ranges_are_sane():
+    for key, spec in L.SENSORS.items():
+        if "range" in spec:
+            lo, hi = spec["range"]
+            assert hi > lo, key
+            assert not spec.get("flag"), key  # flags never get a needle
+
+
+def test_normalize_style():
+    assert L.normalize_style("analog") == "analog"
+    assert L.normalize_style("analog_digital") == "analog_digital"
+    assert L.normalize_style(None) == "digital"
+    assert L.normalize_style("bogus") == "digital"
+
+
+def test_gauge_fraction_clamps():
+    assert L.gauge_fraction(50, 0, 100) == 0.5
+    assert L.gauge_fraction(-10, 0, 100) == 0.0
+    assert L.gauge_fraction(500, 0, 100) == 1.0
+    assert L.gauge_fraction(None, 0, 100) is None
+    assert L.gauge_fraction(1, 5, 5) is None  # degenerate range
+    assert L.gauge_fraction(0, -15, 15) == 0.5  # boost gauge centred at 0 psi
+
+
+def test_gauge_zones_from_thresholds():
+    # ect_high style: above, warn 105, critical 112 on a 40-130 gauge
+    zones = L.gauge_zones(40, 130, 105, 112, "above")
+    assert zones == [((105 - 40) / 90, (112 - 40) / 90, "warn"),
+                     ((112 - 40) / 90, 1.0, "critical")]
+    # battery_low style: below
+    zones = L.gauge_zones(8, 16, 13.0, 11.8, "below")
+    assert [z[2] for z in zones] == ["critical", "warn"]
+    assert zones[0][0] == 0.0 and zones[1][1] == (13.0 - 8) / 8
+    assert L.gauge_zones(0, 100, None, None) == []
+    assert L.gauge_zones(0, 100, 50, None, "above") == [(0.5, 1.0, "warn")]
+    # thresholds beyond the range clamp instead of exploding
+    assert L.gauge_zones(0, 10, 20, 30, "above") == []
 
 
 def test_grid_fills_width():

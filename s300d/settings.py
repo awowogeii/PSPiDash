@@ -16,7 +16,7 @@ from aiohttp import web
 
 # Pure module (no pygame): single source of truth for what a tile can show
 # and which theme colours exist.
-from s300ui.layout import DEFAULT_THEME, DEFAULT_TILES, SENSORS
+from s300ui.layout import DEFAULT_THEME, DEFAULT_TILES, SENSORS, TILE_STYLES
 
 log = logging.getLogger("s300d.settings")
 
@@ -130,6 +130,10 @@ def apply_patch(conf, patch):
                     ui["units"] = v
                 elif k == "show_rpm":
                     ui["show_rpm"] = bool(v)
+                elif k == "tile_style":
+                    if v not in TILE_STYLES:
+                        raise ValueError("tile_style must be one of %s" % (TILE_STYLES,))
+                    ui["tile_style"] = v
                 elif k == "theme":
                     if not isinstance(v, dict):
                         raise ValueError("theme must be a mapping")
@@ -219,7 +223,7 @@ PAGE = r"""<!doctype html>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Del Sol cluster settings</title>
 <style>
-:root{--bg:#0b0712;--card:#1d1430;--fg:#efe9fa;--mut:#8d7fae;--acc:#a06bff;--ok:#3ac569;--bad:#e5484d;--line:#2a2040}
+:root{--bg:#0b0d10;--card:#151a20;--fg:#eae6da;--mut:#7d8791;--acc:#ffb400;--ok:#3ac569;--bad:#e02020;--line:#232a32}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 -apple-system,system-ui,sans-serif}
 header{position:sticky;top:0;background:#000;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)}
 h1{font-size:18px;margin:0}h2{font-size:14px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em;margin:22px 16px 8px}
@@ -269,7 +273,7 @@ button{background:var(--acc);color:#000;border:0;border-radius:10px;padding:12px
 
 <script>
 const $=s=>document.querySelector(s);let cfg={};
-const TYPES=%TYPES%;const TILES=%TILES%;const TILE_DEF=%TILE_DEF%;const THEME=%THEME%;
+const TYPES=%TYPES%;const TILES=%TILES%;const TILE_DEF=%TILE_DEF%;const THEME=%THEME%;const STYLES=%STYLES%;
 const LIVE=[["rpm","rpm",0],["map_kpa","kPa",1],["boost_psi","psi",1],["ect_c","°C",0],["iat_c","°C",0],["vbat","V",1],["tps","%",0],["knock_retard","° ret",1],["shift_stage","shift",0]];
 function num(id,v,step){return `<input type="number" id="${id}" value="${v??''}" step="${step||'any'}">`}
 async function loadAll(){cfg=await (await fetch('/api/config')).json();
@@ -278,6 +282,7 @@ async function loadAll(){cfg=await (await fetch('/api/config')).json();
  $('#display').innerHTML=
   `<div class="row"><label>show rpm bar</label><input type="checkbox" id="ui_show_rpm" ${ui.show_rpm===false?'':'checked'}></div>`+
   `<div class="row"><label>units</label><select id="ui_units"><option ${ui.units!=='imperial'?'selected':''}>metric</option><option ${ui.units==='imperial'?'selected':''}>imperial</option></select></div>`+
+  `<div class="row"><label>big tile style</label><select id="ui_tile_style">`+STYLES.map(s=>`<option ${s===(ui.tile_style||'digital')?'selected':''}>${s}</option>`).join('')+`</select></div>`+
   TILE_DEF.tiles_big.map((d,i)=>`<div class="row"><label>big tile ${i+1}</label>${sel('big_'+i,(ui.tiles_big||TILE_DEF.tiles_big)[i]||d)}</div>`).join('')+
   TILE_DEF.tiles_small.map((d,i)=>`<div class="row"><label>small tile ${i+1}</label>${sel('small_'+i,(ui.tiles_small||TILE_DEF.tiles_small)[i]||d)}</div>`).join('')+
   Object.keys(THEME).map(k=>`<div class="row"><label>${k} colour</label><input type="color" id="th_${k}" value="${(ui.theme||{})[k]||THEME[k]}"></div>`).join('');
@@ -295,7 +300,7 @@ async function loadAll(){cfg=await (await fetch('/api/config')).json();
 function val(id){const e=document.getElementById(id);return e&&e.value!==''?Number(e.value):undefined}
 async function save(){const p={mac:$('#mac').value,rfcomm_channel:val('rfcomm_channel'),poll_hz:val('poll_hz'),
  shift_light:{amber:val('shift_amber'),red:val('shift_red'),flash:val('shift_flash')},alarms:{},scaling_overrides:{},
- ui:{show_rpm:$('#ui_show_rpm').checked,units:$('#ui_units').value,
+ ui:{show_rpm:$('#ui_show_rpm').checked,units:$('#ui_units').value,tile_style:$('#ui_tile_style').value,
   tiles_big:TILE_DEF.tiles_big.map((d,i)=>$('#big_'+i).value),
   tiles_small:TILE_DEF.tiles_small.map((d,i)=>$('#small_'+i).value),
   theme:Object.fromEntries(Object.keys(THEME).map(k=>[k,$('#th_'+k).value]))}};
@@ -314,4 +319,5 @@ loadAll();live();setInterval(live,500);
    .replace("%TILES%", str(list(SENSORS)).replace("'", '"')) \
    .replace("%TILE_DEF%", str({"tiles_big": DEFAULT_TILES["big"],
                                "tiles_small": DEFAULT_TILES["small"]}).replace("'", '"')) \
-   .replace("%THEME%", str(DEFAULT_THEME).replace("'", '"'))
+   .replace("%THEME%", str(DEFAULT_THEME).replace("'", '"')) \
+   .replace("%STYLES%", str(list(TILE_STYLES)).replace("'", '"'))

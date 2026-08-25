@@ -4,16 +4,17 @@ RPM_MAX = 9000
 SCREEN = (800, 480)
 
 # theme — every colour is overridable from ui.theme in config.yaml. accent
-# is the "good/active" colour (LIVE dot, VTEC, stage-0 shift bar); warn and
-# critical should stay high-contrast amber/red-ish so alarms read at a glance.
+# is the "good/active" colour (LIVE dot, VTEC, needles, stage-0 shift bar);
+# warn and critical should stay high-contrast so alarms read at a glance.
+# Defaults are a mid-2000s street-racing look: gunmetal black + amber.
 DEFAULT_THEME = {
-    "bg": "#0b0712",        # near-black with a purple cast
-    "tile": "#1d1430",      # dark purple card
-    "fg": "#efe9fa",        # lavender-white
-    "muted": "#8d7fae",     # dim violet-grey
-    "accent": "#a06bff",    # purple
-    "warn": "#ffaa1e",
-    "critical": "#e5324b",
+    "bg": "#0b0d10",        # near-black gunmetal
+    "tile": "#151a20",      # dark blue-grey panel
+    "fg": "#eae6da",        # warm headlight white
+    "muted": "#7d8791",     # steel grey
+    "accent": "#ffb400",    # amber
+    "warn": "#ff6a00",      # hot orange
+    "critical": "#e02020",
 }
 
 
@@ -56,42 +57,52 @@ set_theme()
 # show "no wideband" until 0x0329 exists. Lambda is deliberately uncoloured
 # (the lean rule is tps-gated, tiles are not) and knock_count too (its rate
 # rule thresholds apply to the increase, not the raw counter).
+# range is (min, max) in the sensor's native units for the analog needle;
+# sensors without one (flags, unbounded counters) always render digitally.
 SENSORS = {
-    "rpm":             {"label": "RPM", "decimals": 0},
-    "speed_kph":       {"label": "SPEED", "speed": True},
+    "rpm":             {"label": "RPM", "decimals": 0, "range": (0, RPM_MAX)},
+    "speed_kph":       {"label": "SPEED", "speed": True, "range": (0, 260)},
     "gear":            {"label": "GEAR", "decimals": 0},
-    "map_kpa":         {"label": "MAP", "decimals": 0, "unit": " kPa"},
-    "map_v":           {"label": "MAP SENSOR", "decimals": 2, "unit": " V"},
+    "map_kpa":         {"label": "MAP", "decimals": 0, "unit": " kPa", "range": (0, 300)},
+    "map_v":           {"label": "MAP SENSOR", "decimals": 2, "unit": " V", "range": (0, 5)},
     "boost_psi":       {"label": "BOOST psi", "decimals": 1, "rule": "overboost",
-                        "sub": ("map_kpa", 0, " kPa")},
-    "baro_kpa":        {"label": "BARO", "decimals": 0, "unit": " kPa"},
-    "tps":             {"label": "THROTTLE", "decimals": 0, "unit": "%", "bar": True},
-    "inj_ms":          {"label": "INJECTOR", "decimals": 2, "unit": " ms"},
-    "inj_duty":        {"label": "INJ DUTY", "decimals": 0, "unit": "%", "bar": True},
-    "ign_adv":         {"label": "IGN ADVANCE", "decimals": 1, "unit": "°"},
-    "ign_dwell":       {"label": "DWELL", "decimals": 2, "unit": " ms"},
-    "ect_c":           {"label": "COOLANT", "temp": True, "rule": "ect_high"},
-    "iat_c":           {"label": "INTAKE", "temp": True, "rule": "iat_high"},
-    "vbat":            {"label": "BATTERY", "decimals": 1, "unit": " V", "rule": "battery_low"},
+                        "sub": ("map_kpa", 0, " kPa"), "range": (-15, 15)},
+    "baro_kpa":        {"label": "BARO", "decimals": 0, "unit": " kPa", "range": (80, 110)},
+    "tps":             {"label": "THROTTLE", "decimals": 0, "unit": "%", "bar": True,
+                        "range": (0, 100)},
+    "inj_ms":          {"label": "INJECTOR", "decimals": 2, "unit": " ms", "range": (0, 25)},
+    "inj_duty":        {"label": "INJ DUTY", "decimals": 0, "unit": "%", "bar": True,
+                        "range": (0, 100)},
+    "ign_adv":         {"label": "IGN ADVANCE", "decimals": 1, "unit": "°", "range": (-10, 50)},
+    "ign_dwell":       {"label": "DWELL", "decimals": 2, "unit": " ms", "range": (0, 10)},
+    "ect_c":           {"label": "COOLANT", "temp": True, "rule": "ect_high", "range": (40, 130)},
+    "iat_c":           {"label": "INTAKE", "temp": True, "rule": "iat_high", "range": (0, 80)},
+    "vbat":            {"label": "BATTERY", "decimals": 1, "unit": " V", "rule": "battery_low",
+                        "range": (8, 16)},
     "vtec":            {"label": "VTEC", "flag": True},
     "vtec_oil":        {"label": "VTEC OIL", "flag": True},
-    "target_lambda":   {"label": "TARGET λ", "decimals": 2},
-    "wideband_v":      {"label": "WB SENSOR", "decimals": 2, "unit": " V"},
-    "wideband_lambda": {"label": "LAMBDA", "decimals": 2, "needs_afr": True},
+    "target_lambda":   {"label": "TARGET λ", "decimals": 2, "range": (0.6, 1.4)},
+    "wideband_v":      {"label": "WB SENSOR", "decimals": 2, "unit": " V", "range": (0, 5)},
+    "wideband_lambda": {"label": "LAMBDA", "decimals": 2, "needs_afr": True,
+                        "range": (0.6, 1.4)},
     "knock_level":     {"label": "KNOCK LEVEL", "decimals": 0},
     "knock_threshold": {"label": "KNOCK THRESH", "decimals": 0},
-    "knock_retard":    {"label": "KNOCK RETARD", "decimals": 1, "unit": "°", "rule": "knock_retard"},
+    "knock_retard":    {"label": "KNOCK RETARD", "decimals": 1, "unit": "°",
+                        "rule": "knock_retard", "range": (0, 10)},
     "knock_count":     {"label": "KNOCK COUNT", "decimals": 0},
     "rev_limiter":     {"label": "REV LIMIT", "flag": True, "alert": True},
     "ignition_cut":    {"label": "IGN CUT", "flag": True, "alert": True},
     "boost_cut":       {"label": "BOOST CUT", "flag": True, "alert": True},
     "launch_cut":      {"label": "LAUNCH CUT", "flag": True, "alert": True},
     "shift_cut":       {"label": "SHIFT CUT", "flag": True, "alert": True},
-    "boost_duty":      {"label": "BOOST DUTY", "decimals": 0, "unit": "%"},
-    "analog1":         {"label": "ANALOG 1", "decimals": 2, "unit": " V"},
-    "analog2":         {"label": "ANALOG 2", "decimals": 2, "unit": " V"},
+    "boost_duty":      {"label": "BOOST DUTY", "decimals": 0, "unit": "%", "range": (0, 100)},
+    "analog1":         {"label": "ANALOG 1", "decimals": 2, "unit": " V", "range": (0, 5)},
+    "analog2":         {"label": "ANALOG 2", "decimals": 2, "unit": " V", "range": (0, 5)},
     "shift_stage":     {"label": "SHIFT STAGE", "decimals": 0},
 }
+
+# How the big tiles draw their value: digital number, analog needle, or both.
+TILE_STYLES = ("digital", "analog", "analog_digital")
 
 DEFAULT_TILES = {"big": ["boost_psi", "ect_c", "iat_c", "vbat"],
                  "small": ["tps", "knock_retard", "wideband_lambda"]}
@@ -191,6 +202,34 @@ def sensor_text(key, d, units):
             return fmt(kph_to_mph(value), 0, " mph")
         return fmt(value, 0, " km/h")
     return fmt(value, spec.get("decimals", 0), spec.get("unit", ""))
+
+
+def normalize_style(value):
+    return value if value in TILE_STYLES else "digital"
+
+
+def gauge_fraction(value, lo, hi):
+    """0..1 needle position for value on [lo, hi]; None when there's no value."""
+    if value is None or hi <= lo:
+        return None
+    return max(0.0, min(1.0, (float(value) - lo) / (hi - lo)))
+
+
+def gauge_zones(lo, hi, warn, critical, direction="above"):
+    """Coloured arc bands [(frac0, frac1, level), ...] from alarm thresholds."""
+    if warn is None or hi <= lo:
+        return []
+
+    def f(v):
+        return max(0.0, min(1.0, (float(v) - lo) / (hi - lo)))
+
+    if direction == "below":
+        zones = [(0.0, f(critical), "critical"), (f(critical), f(warn), "warn")] \
+            if critical is not None else [(0.0, f(warn), "warn")]
+    else:
+        zones = [(f(warn), f(critical), "warn"), (f(critical), 1.0, "critical")] \
+            if critical is not None else [(f(warn), 1.0, "warn")]
+    return [z for z in zones if z[1] > z[0]]
 
 
 def tile_rows(show_rpm):

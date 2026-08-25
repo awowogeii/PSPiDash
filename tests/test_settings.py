@@ -53,7 +53,10 @@ def test_apply_patch_ui_display():
     assert new["ui"]["theme"]["bg"] == "#102030"
     assert new["ui"]["theme"]["accent"] == "#ffb000"  # normalised to lowercase
     assert new["ui"]["theme"]["warn"] == BASE["ui"]["theme"]["warn"]  # merged, not replaced
-    for bad in ({"theme": {"bg": "red"}},                               # not #rrggbb
+    new = st.apply_patch(BASE, {"ui": {"tile_style": "analog"}})
+    assert new["ui"]["tile_style"] == "analog"
+    for bad in ({"tile_style": "steampunk"},                            # unknown style
+                {"theme": {"bg": "red"}},                               # not #rrggbb
                 {"theme": {"sparkles": "#ffffff"}},                     # unknown colour
                 {"theme": "dark"},                                      # not a mapping
                 {"tiles_big": ["rpm"]},                                 # wrong slot count

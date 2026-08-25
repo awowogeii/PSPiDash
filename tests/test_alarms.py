@@ -4,7 +4,11 @@ import yaml
 from s300d import alarms as al
 
 CONFIG = yaml.safe_load(open("config.yaml", encoding="utf-8"))
-RULES = CONFIG["alarms"]
+# Thresholds come from the repo config, but the settings page rewrites its
+# enabled-flags in place, so pin the states these tests assume: everything
+# on except the turbo rules.
+RULES = {rid: dict(rule, enabled=rid not in ("overboost", "boost_cut"))
+         for rid, rule in CONFIG["alarms"].items()}
 CHANNELS_NO_WB = [(0x0100, 0x83), (0x0160, 0x50), (0x0320, 0x9E)]
 CHANNELS_WB = CHANNELS_NO_WB + [(0x0329, 0x9E)]
 
