@@ -1,0 +1,6 @@
+aiohttp
+PyYAML
+# dev only
+pytest
+# UI (on the Pi: apt python3-pygame; on a laptop: pygame-ce works too)
+pygame-ce

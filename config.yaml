@@ -1,0 +1,114 @@
+# Written by the s300d settings page. Comments are not preserved.
+mac: 00:00:00:00:00:00
+rfcomm_channel: 1
+poll_hz: 10.0
+scaling_overrides: {}
+server:
+  host: 127.0.0.1
+  port: 8080
+  broadcast_hz: 30
+  stale_after_s: 0.5
+  client_send_timeout_s: 0.5
+settings:
+  enabled: true
+  host: 10.42.0.1
+  port: 8081
+hotspot:
+  ssid: delsol-cluster
+  password: delsol1993
+  ip: 10.42.0.1
+ui:
+  fullscreen: true
+  ws: ws://127.0.0.1:8080/ws
+  units: metric
+  show_rpm: true
+  tiles_big:
+  - boost_psi
+  - ect_c
+  - iat_c
+  - vbat
+  tiles_small:
+  - tps
+  - shift_stage
+  - wideband_lambda
+  theme:                # any of these may be omitted; colours are #rrggbb
+    bg: "#0b0712"
+    tile: "#1d1430"
+    fg: "#efe9fa"
+    muted: "#8d7fae"
+    accent: "#a06bff"   # LIVE dot, VTEC, stage-0 shift bar
+    warn: "#ffaa1e"
+    critical: "#e5324b"
+shift_light:
+  amber: 7400
+  red: 7900
+  flash: 8100
+alarms:
+  ect_high:
+    enabled: true
+    channel: ect_c
+    direction: above
+    warn: 105.0
+    critical: 112.0
+    clear: 100.0
+    samples: 5
+  iat_high:
+    enabled: true
+    channel: iat_c
+    direction: above
+    warn: 55.0
+    critical: 70.0
+    clear: 50.0
+    samples: 5
+  battery_low:
+    enabled: true
+    channel: vbat
+    direction: below
+    warn: 13.0
+    critical: 11.8
+    clear: 13.4
+    samples: 5
+    rpm_min: 1000.0
+  knock_retard:
+    enabled: true
+    channel: knock_retard
+    direction: above
+    warn: 2.0
+    critical: 4.0
+    clear: 1.0
+    samples: 5
+  knock_count:
+    enabled: true
+    type: rate
+    channel: knock_count
+    window_s: 5
+    warn: 1.0
+    critical: 3.0
+    sustained_s: 10.0
+    clear: 0.0
+    samples: 1
+  overboost:
+    enabled: false
+    channel: boost_psi
+    direction: above
+    warn: 8.5
+    critical: 10.0
+    clear: 7.5
+    samples: 3
+  boost_cut:
+    enabled: false
+    channel: boost_cut
+    direction: above
+    warn: 0.5
+    critical: 0.5
+    clear: 0.5
+    samples: 1
+  lean:
+    enabled: true
+    channel: wideband_lambda
+    direction: above
+    warn: 1.05
+    critical: 1.15
+    clear: 1.0
+    samples: 5
+    tps_min: 70.0

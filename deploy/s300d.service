@@ -1,0 +1,25 @@
+[Unit]
+Description=s300d - Hondata S300 datalog daemon
+After=bluetooth.service
+Wants=bluetooth.service
+
+[Service]
+Type=simple
+User=cluster
+Group=cluster
+SupplementaryGroups=bluetooth
+WorkingDirectory=/opt/s300-cluster
+EnvironmentFile=-/boot/firmware/s300-cluster/s300d.env
+ExecStart=/usr/bin/python3 -m s300d --config /boot/firmware/s300-cluster/config.yaml $S300D_ARGS
+Restart=always
+RestartSec=2
+Nice=-5
+# hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/boot/firmware/s300-cluster
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

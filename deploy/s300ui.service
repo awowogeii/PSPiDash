@@ -1,0 +1,26 @@
+[Unit]
+Description=s300ui - native gauge cluster on DRM/KMS
+After=s300d.service
+Wants=s300d.service
+Conflicts=getty@tty1.service
+After=getty@tty1.service
+
+[Service]
+Type=simple
+User=cluster
+Group=cluster
+SupplementaryGroups=video render input tty
+WorkingDirectory=/opt/s300-cluster
+Environment=SDL_VIDEODRIVER=kmsdrm SDL_AUDIODRIVER=dummy PYGAME_HIDE_SUPPORT_PROMPT=1
+ExecStart=/usr/bin/python3 -m s300ui --config /boot/firmware/s300-cluster/config.yaml
+StandardInput=tty
+StandardOutput=journal
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+Restart=always
+RestartSec=1
+Nice=-10
+
+[Install]
+WantedBy=multi-user.target
