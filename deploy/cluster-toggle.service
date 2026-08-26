@@ -1,0 +1,13 @@
+[Unit]
+Description=PSPi Home button: toggle gauge cluster <-> desktop
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/s300-cluster/deploy/cluster_toggle.py
+Restart=always
+RestartSec=2
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target

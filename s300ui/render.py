@@ -10,6 +10,7 @@ from s300ui import layout as L
 class Cluster:
     def __init__(self, screen, conf=None):
         self.screen = screen
+        self.page = 0  # 0 = main cluster, 1 = sensor-only page (START toggles)
         self.configure(conf or {})
         pygame.font.init()
         name = pygame.font.match_font("dejavusans,dejavusansmono,freesans") or None
@@ -38,6 +39,10 @@ class Cluster:
             self.danger_rpm = None
         self.tiles_big = L.normalize_tiles(ui.get("tiles_big"), L.DEFAULT_TILES["big"])
         self.tiles_small = L.normalize_tiles(ui.get("tiles_small"), L.DEFAULT_TILES["small"])
+        self.tiles_page2 = L.normalize_tiles(ui.get("page2_tiles"), L.DEFAULT_TILES["page2"])
+
+    def toggle_page(self):
+        self.page = 0 if self.page else 1
 
     # -- text helpers ---------------------------------------------------------
 
@@ -204,17 +209,30 @@ class Cluster:
                                  (bar[0], bar[1], int(bar[2] * max(0, min(100, v)) / 100), bar[3]),
                                  border_radius=5)
 
+    def _styled_tile(self, rect, key, d, afr_available):
+        """Big tile honouring ui.tile_style (analog when the sensor supports it)."""
+        spec = L.SENSORS[key]
+        analog = self.tile_style != "digital" and "range" in spec \
+            and not spec.get("flag") \
+            and not (spec.get("needs_afr") and not afr_available)
+        if analog:
+            self.gauge_tile(rect, key, d, self.tile_style == "analog_digital")
+        else:
+            self.big_tile(rect, key, d, afr_available)
+
+    def page2(self, d, afr_available):
+        """Sensor-only page: 2x4 configurable tiles, no rpm/vtec/shift widgets.
+        Top row follows tile_style; bottom row is always digital."""
+        top, bottom = L.page2_rows()
+        for rect, key in zip(L.grid(4, *top), self.tiles_page2[:4]):
+            self._styled_tile(rect, key, d, afr_available)
+        for rect, key in zip(L.grid(4, *bottom), self.tiles_page2[4:]):
+            self.big_tile(rect, key, d, afr_available)
+
     def gauges(self, d, afr_available):
         big_row, small_row = L.tile_rows(self.show_rpm)
         for rect, key in zip(L.grid(4, *big_row), self.tiles_big):
-            spec = L.SENSORS[key]
-            analog = self.tile_style != "digital" and "range" in spec \
-                and not spec.get("flag") \
-                and not (spec.get("needs_afr") and not afr_available)
-            if analog:
-                self.gauge_tile(rect, key, d, self.tile_style == "analog_digital")
-            else:
-                self.big_tile(rect, key, d, afr_available)
+            self._styled_tile(rect, key, d, afr_available)
         for rect, key in zip(L.grid(3, *small_row), self.tiles_small):
             self.small_tile(rect, key, d, afr_available)
 
@@ -255,8 +273,9 @@ class Cluster:
             self.panel((200, 428, 580, 40), col)
             self.text(self.f_small, text, L.BG if col != L.TILE else L.RED, (490, 448), "center")
         else:
-            self.text(self.f_tiny, "A: ack   SELECT: release/resume BT", L.MUTED,
-                      (770, 448), "midright")
+            hint = "× ack   SELECT bt   START %s   HOME desktop" % \
+                ("cluster" if self.page else "sensors")
+            self.text(self.f_tiny, hint, L.MUTED, (770, 448), "midright")
 
     # -- frame ----------------------------------------------------------------
 
@@ -270,9 +289,13 @@ class Cluster:
         if self._danger and not stale:
             self.danger_screen(d.get("rpm"), int(time.monotonic() * 8) % 2 == 0)
             return
-        if self.show_rpm:
-            self.rpm_bar(d, blink_on)
-        self.gauges(d, (msg or {}).get("afr_available", False))
+        afr = (msg or {}).get("afr_available", False)
+        if self.page == 1:
+            self.page2(d, afr)
+        else:
+            if self.show_rpm:
+                self.rpm_bar(d, blink_on)
+            self.gauges(d, afr)
         self.footer(msg, connected, blink_on)
         if stale and d:
             veil = pygame.Surface(L.SCREEN, pygame.SRCALPHA)

@@ -1,83 +1,113 @@
-# s300-cluster
+# PSPiDash — Hondata S300 gauge cluster on a PSPi 6
 
-Hondata S300 V3 binary-protocol library for a Raspberry Pi gauge cluster.
-This layer is pure logic — framing, channel decoding, unit scaling. No
-transport, no UI. Python 3.11+. Protocol/client layers are standard-library only; the daemon
-adds aiohttp and PyYAML (`pip install -r requirements.txt`).
+A self-contained digital dash for a Honda running a **Hondata S300 V3**,
+built on a **PSPi 6** handheld (Raspberry Pi CM4, 800×480 DPI display).
+A daemon reads live engine data over Bluetooth RFCOMM using the Hondata
+binary protocol; a native pygame UI draws straight to DRM/KMS (no desktop
+needed, ~7–8 s power-on to gauges); a phone-facing settings page runs on the
+Pi's own WiFi hotspot.
 
-## Layout
+    S300 --BT RFCOMM--> s300d (daemon) --ws://127.0.0.1:8080/ws--> s300ui (pygame/KMS)
+                          |
+                          +-- http://10.42.0.1:8081  settings page on the Pi's hotspot
 
-    s300d/protocol.py   header pack/unpack, read_exact(), read_packet(), command builders,
-                        DeviceInfo / DatalogInfo parsers
-    s300d/channels.py   channel ID registry, SizeAndType decode, scaling table,
-                        build_offset_table(), decode_packet()
-    s300d/config.py     dataclass-backed config.yaml loader (minimal stdlib YAML subset)
-    s300d/client.py     LiveSource: RFCOMM socket, state machine, backoff, release()/resume()
-    s300d/alarms.py     degF->degC boundary, boost from baro, shift light, AlarmEngine
-    s300d/server.py     aiohttp static + /ws on 127.0.0.1, broadcast loop, slow-client eviction
-    s300d/__main__.py   daemon entry point: python -m s300d [--replay capture]
-    s300d/settings.py   phone settings page + API (hotspot only), atomic save + hot reload
-    s300ui/             native pygame cluster (KMS on the Pi, --windowed on a laptop)
-    deploy/             install.sh, push.sh, systemd units, hotspot/overlay/pair helpers
-    INSTALL.md          step-by-step PSPi 6 deployment
-    LOCAL_TESTING.md    running everything on a laptop with a synthetic capture
-    tools/synth.py      generate a synthetic capture for bench testing
-    tools/record.py     capture raw 0x35 payloads to JSONL (tools/CAPTURE_FORMAT.md)
-    tools/replay.py     ReplaySource: same interface as LiveSource, from a capture
-    tests/              pytest suite
-    config.yaml         mac, rfcomm_channel, poll_hz, scaling_overrides (placeholders)
-    docs/PROTOCOL.md    protocol ground truth — the permanent reference
+The ECU link is strictly **read-only**: only DeviceInfo, DatalogInfo,
+ChannelIDs and DatalogPacket commands are ever sent. No writes, no DTC
+operations. [docs/PROTOCOL.md](docs/PROTOCOL.md) is the protocol ground truth.
 
-## Running tests
+## Features
 
-    pip install pytest        # dev dependency only
-    pytest
+- **Every datalog channel as a gauge** — rpm, speed, gear, MAP/boost/baro,
+  TPS, injector duration/duty, ignition advance/dwell, coolant/intake temps,
+  battery, VTEC, knock (level/threshold/retard/count), wideband lambda,
+  rev/boost/launch/shift cuts, boost control duty, analog inputs.
+- **Configurable layout** — pick which sensor sits in each tile (4 big + 3
+  small), hide the RPM bar for bigger tiles, and a **second sensor-only page
+  (START button)** with 8 more configurable tiles.
+- **Digital, analog, or hybrid gauges** — needle gauges with warn/critical
+  zones painted from your alarm thresholds, optionally with the digital
+  value in the centre.
+- **Themable** — every colour overridable from the phone (colour pickers);
+  angular street-racing default look.
+- **Alarms** — config-driven warn/critical engine alarms with deadband,
+  debounce, latching and rpm/tps gates, evaluated in the daemon so they
+  survive UI restarts. Optional full-screen **danger-to-manifold** warning
+  at a set rpm.
+- **Phone settings page** — thresholds, shift light, tiles, theme, Bluetooth
+  and calibration; atomic saves, hot-applied within seconds (no restarts).
+- **Car-safe** — read-only root filesystem option for ignition-cut power
+  safety, screen never blanks, device never sleeps, Bluetooth link
+  release/resume for handing the ECU to SManager or the Hondata phone app.
 
-## Usage sketch
+## PSPi 6 buttons
 
-    from s300d import protocol, channels
+| Button | Action |
+|---|---|
+| **×** (cross) | acknowledge latched critical alarms |
+| **SELECT** | release / resume the Bluetooth link |
+| **START** | toggle the second sensor page |
+| **HOME / PS** | switch cluster ↔ desktop (desktop images) |
 
-    # after sending protocol.cmd_get_datalog_channel_ids() and reading the reply:
-    channel_list = channels.parse_channel_ids(payload_0x31)
-    table = channels.build_offset_table(channel_list, cfg.scaling_overrides)  # once per connection
+## Installing on the PSPi 6
 
-    # per DL_GetDatalogPacket reply:
-    values = channels.decode_packet(table, payload_0x35)   # pure, no I/O
+Full walkthrough (fresh eMMC or existing install): **[INSTALL.md](INSTALL.md)**.
+Works on Raspberry Pi OS **Trixie Lite or standard/desktop**; on desktop
+images the installer boots the Pi straight into the cluster (desktop stays
+installed — the HOME button or one command brings it back).
 
-`read_packet(recv, buf)` takes any `recv(n) -> bytes` callable plus a persistent
-`bytearray` so partial and coalesced packets on the byte stream are handled.
+The short version, from a laptop that can SSH to the Pi:
 
-## Calibration
+    deploy/push.sh <pi-host-or-ip>       # rsync + sudo deploy/install.sh
+    sudo /opt/s300-cluster/deploy/pair.sh <S300 MAC>   # on the Pi, ignition on
 
-`CT_RPM` and `CT_RETARD` factors are provisional (see TODOs in `channels.py`).
-Override any type's scaling in `config.yaml`:
+then join the Pi's hotspot and open `http://10.42.0.1:8081` on your phone to
+set the ECU MAC/RFCOMM channel and everything else. The installer handles
+packages, services, the hotspot (DHCP + WiFi country included), boot-time
+tuning, no-sleep/no-blanking, SSH, and desktop handoff.
 
-    scaling_overrides:
-      CT_RPM: 0.25              # scale only
-      CT_RETARD:
-        scale: 0.5
-        offset: 0
+When it all works, lock the root filesystem so yanking power can't corrupt it:
 
-## Live and replay
+    sudo deploy/overlay.sh lock && sudo reboot
 
-    python -m tools.record --out capture.bin --seconds 60 --print   # live, prints decoded JSON lines
-    python -m tools.replay capture.bin [--speed 2] [--loop]          # same output shape, off-car
+## Testing without the car
 
-Both `LiveSource` and `ReplaySource` expose `frames()`, `state`, `channel_list`,
-`release()`, `resume()`, `close()`. Call `release()` to hand the RFCOMM channel to
-SManager or the phone; `resume()` reconnects and re-runs the full handshake.
+Everything runs on a laptop — see [LOCAL_TESTING.md](LOCAL_TESTING.md):
 
-## Running the daemon
+    pip install -r requirements.txt
+    python -m tools.synth --out capture.jsonl            # synthetic engine data
+    python -m s300d --replay capture.jsonl --loop --settings-host 127.0.0.1
+    python -m s300ui --windowed                          # second terminal
+    # settings page: http://127.0.0.1:8081
+    # keys: Enter=ack  R=release/resume  Tab=page 2  Esc=quit
 
-    python -m s300d                              # live ECU from config.yaml
-    python -m s300d --replay capture.bin --speed 2 --loop   # off-car
+Record a real capture on the car (`python -m tools.record --out capture.jsonl
+--seconds 60`) and replay it the same way.
 
-Serves `./ui` on http://127.0.0.1:8080 and a WebSocket at `/ws` (loopback only).
-Alarms, shift-light stages and server settings all live in `config.yaml`.
-UI commands: `{"cmd": "ack_alarms"}`, `{"cmd": "release_bt"}`, `{"cmd": "resume_bt"}`.
+## Tests
 
-## Native cluster UI
+    pip install pytest
+    pytest        # no hardware needed
 
-    python -m s300ui --windowed       # on a laptop, with the daemon running (e.g. --replay)
+The suite covers protocol framing, channel decoding/scaling, the client
+state machine (fake sockets), alarms, the WebSocket server, the settings
+API, and the UI's pure layout logic.
 
-On the Pi it is started by `s300ui.service` on tty1 via DRM/KMS. See INSTALL.md.
+## Repo layout
+
+    s300d/       daemon: protocol framing, channel decode, RFCOMM client state
+                 machine, alarm engine, WebSocket hub, phone settings service
+    s300ui/      pygame cluster: pure layout/format logic + renderer + WS client
+    tools/       synth (bench data), record (capture), replay (off-car source)
+    deploy/      install.sh, push.sh, systemd units, hotspot/overlay/pair
+                 helpers, Home-button cluster<->desktop toggle
+    tests/       pytest suite
+    docs/        PROTOCOL.md — Hondata protocol ground truth
+    config.yaml  the single config file (on the Pi: /boot/firmware/s300-cluster/)
+
+## Calibration notes
+
+`CT_RPM` and `CT_RETARD` scaling factors are provisional until verified
+against the car (spec text and worked example disagree). Both are overridable
+from the settings page — compare the live rpm readout with the tacho and
+adjust. Boost is computed as MAP minus the barometric-pressure channel, never
+a hardcoded constant.

@@ -105,7 +105,10 @@ SENSORS = {
 TILE_STYLES = ("digital", "analog", "analog_digital")
 
 DEFAULT_TILES = {"big": ["boost_psi", "ect_c", "iat_c", "vbat"],
-                 "small": ["tps", "knock_retard", "wideband_lambda"]}
+                 "small": ["tps", "knock_retard", "wideband_lambda"],
+                 # second page (START button): sensors only, no rpm/vtec/shift
+                 "page2": ["map_kpa", "baro_kpa", "ign_adv", "inj_duty",
+                           "knock_retard", "knock_count", "ect_c", "vbat"]}
 
 
 def rpm_fraction(rpm, rpm_max=RPM_MAX):
@@ -163,7 +166,7 @@ def alarm_banner(alarms):
     level = "critical" if crit else "warn"
     text = "  ".join(a["id"].replace("_", " ").upper() for a in picked)
     if crit and any(a.get("latched") for a in crit):
-        text += "  [press A to ack]"
+        text += "  [press × to ack]"
     return level, text
 
 
@@ -248,6 +251,11 @@ def tile_rows(show_rpm):
     if show_rpm:
         return (20, 205, 760, 128), (20, 345, 760, 72)
     return (20, 14, 760, 258), (20, 284, 760, 132)
+
+
+def page2_rows():
+    """Two 4-tile rows filling the screen above the footer (sensor-only page)."""
+    return (20, 14, 760, 195), (20, 221, 760, 195)
 
 
 def grid(cols, x0, y0, width, height, gap=10):

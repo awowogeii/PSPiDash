@@ -233,20 +233,33 @@ def run(hub, server_cfg=None, ui_dir="ui", extra_sites=()):
 
     async def serve():
         runners = []
-        for a, host, port in [(app, cfg["host"], int(cfg["port"]))] + list(extra_sites):
+
+        async def bind(a, host, port, retry):
             runner = web.AppRunner(a, access_log=None)
             await runner.setup()
-            try:
-                await web.TCPSite(runner, host, port).start()
-                log.info("serving on http://%s:%d", host, port)
-            except OSError as exc:
-                # e.g. hotspot interface not up yet; don't take the dash down
-                log.error("cannot bind %s:%d: %s", host, port, exc)
             runners.append(runner)
+            while True:
+                try:
+                    await web.TCPSite(runner, host, port).start()
+                    log.info("serving on http://%s:%d", host, port)
+                    return
+                except OSError as exc:
+                    if not retry:
+                        log.error("cannot bind %s:%d: %s", host, port, exc)
+                        return
+                    # e.g. hotspot interface not up yet; keep trying so the
+                    # settings page appears whenever the hotspot does
+                    log.warning("cannot bind %s:%d (%s); retrying in 5s", host, port, exc)
+                    await asyncio.sleep(5)
+
+        await bind(app, cfg["host"], int(cfg["port"]), retry=False)
+        tasks = [asyncio.create_task(bind(a, h, p, retry=True)) for a, h, p in extra_sites]
         try:
             while True:
                 await asyncio.sleep(3600)
         finally:
+            for t in tasks:
+                t.cancel()
             for r in runners:
                 await r.cleanup()
 

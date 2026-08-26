@@ -27,7 +27,7 @@ PATH = web.AppKey("path", str)
 EDITABLE = ("alarms", "shift_light", "scaling_overrides", "poll_hz", "mac", "rfcomm_channel",
             "ui")
 # ...and only this subset of "ui"; ws/fullscreen/buttons stay file-only.
-UI_TILE_SLOTS = {"tiles_big": 4, "tiles_small": 3}
+UI_TILE_SLOTS = {"tiles_big": 4, "tiles_small": 3, "page2_tiles": 8}
 RULE_FIELDS = {"enabled": bool, "warn": float, "critical": float, "clear": float,
                "samples": int, "rpm_min": float, "tps_min": float,
                "window_s": float, "sustained_s": float}
@@ -294,6 +294,7 @@ async function loadAll(){cfg=await (await fetch('/api/config')).json();
   `<div class="row"><label>danger-to-manifold rpm (blank = off)</label><input type="number" id="ui_danger_rpm" min="1000" max="20000" step="100" value="${ui.danger_rpm??''}"></div>`+
   TILE_DEF.tiles_big.map((d,i)=>`<div class="row"><label>big tile ${i+1}</label>${sel('big_'+i,(ui.tiles_big||TILE_DEF.tiles_big)[i]||d)}</div>`).join('')+
   TILE_DEF.tiles_small.map((d,i)=>`<div class="row"><label>small tile ${i+1}</label>${sel('small_'+i,(ui.tiles_small||TILE_DEF.tiles_small)[i]||d)}</div>`).join('')+
+  TILE_DEF.page2_tiles.map((d,i)=>`<div class="row"><label>page 2 tile ${i+1}</label>${sel('p2_'+i,(ui.page2_tiles||TILE_DEF.page2_tiles)[i]||d)}</div>`).join('')+
   Object.keys(THEME).map(k=>`<div class="row"><label>${k} colour</label><input type="color" id="th_${k}" value="${(ui.theme||{})[k]||THEME[k]}"></div>`).join('');
  $('#shift').innerHTML=['amber','red','flash'].map(k=>`<div class="row"><label>${k}</label>${num('shift_'+k,cfg.shift_light?.[k],100)}</div>`).join('');
  $('#rules').innerHTML=Object.entries(cfg.alarms||{}).map(([id,r])=>`<div class="card rule" data-id="${id}">
@@ -313,6 +314,7 @@ async function save(){const p={mac:$('#mac').value,rfcomm_channel:val('rfcomm_ch
   danger_rpm:$('#ui_danger_rpm').value===''?null:Number($('#ui_danger_rpm').value),
   tiles_big:TILE_DEF.tiles_big.map((d,i)=>$('#big_'+i).value),
   tiles_small:TILE_DEF.tiles_small.map((d,i)=>$('#small_'+i).value),
+  page2_tiles:TILE_DEF.page2_tiles.map((d,i)=>$('#p2_'+i).value),
   theme:Object.fromEntries(Object.keys(THEME).map(k=>[k,$('#th_'+k).value]))}};
  for(const [id,r] of Object.entries(cfg.alarms||{})){const o={enabled:$('#en_'+id).checked};
   for(const f of ['warn','critical','clear','samples','rpm_min','tps_min','sustained_s']){const v=val(f+'_'+id);if(v!==undefined)o[f]=v}p.alarms[id]=o}
@@ -328,6 +330,7 @@ loadAll();live();setInterval(live,500);
 """.replace("%TYPES%", str(list(TYPE_NAMES)).replace("'", '"')) \
    .replace("%TILES%", str(list(SENSORS)).replace("'", '"')) \
    .replace("%TILE_DEF%", str({"tiles_big": DEFAULT_TILES["big"],
-                               "tiles_small": DEFAULT_TILES["small"]}).replace("'", '"')) \
+                               "tiles_small": DEFAULT_TILES["small"],
+                               "page2_tiles": DEFAULT_TILES["page2"]}).replace("'", '"')) \
    .replace("%THEME%", str(DEFAULT_THEME).replace("'", '"')) \
    .replace("%STYLES%", str(list(TILE_STYLES)).replace("'", '"'))

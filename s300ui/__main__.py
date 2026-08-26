@@ -16,9 +16,11 @@ from s300ui.wsclient import DaemonClient
 
 log = logging.getLogger("s300ui")
 
-# PSPi 6 gamepad: button indices vary by firmware; keep both keyboard and
-# joystick paths and make the indices configurable under ui.buttons.
-DEFAULT_BUTTONS = {"ack": 0, "release": 6, "resume": 6, "quit": None}
+# PSPi 6 gamepad driver exposes a "PS3 Controller": b0=cross b8=select
+# b9=start b10=home. Home is handled by deploy/cluster_toggle.py (root),
+# not here. Keep keyboard equivalents and make indices configurable under
+# ui.buttons in case of a different driver build.
+DEFAULT_BUTTONS = {"ack": 0, "release": 8, "resume": 8, "page": 9, "quit": None}
 
 
 def read_conf(path):
@@ -87,12 +89,16 @@ def main(argv=None):
                 elif ev.key == pygame.K_r:
                     released = not released
                     client.send("release_bt" if released else "resume_bt")
+                elif ev.key in (pygame.K_TAB, pygame.K_p):
+                    cluster.toggle_page()
             elif ev.type == pygame.JOYBUTTONDOWN:
                 if ev.button == buttons["ack"]:
                     client.send("ack_alarms")
                 elif ev.button in (buttons["release"], buttons["resume"]):
                     released = not released
                     client.send("release_bt" if released else "resume_bt")
+                elif ev.button == buttons.get("page"):
+                    cluster.toggle_page()
                 elif buttons["quit"] is not None and ev.button == buttons["quit"]:
                     running = False
         now = time.monotonic()

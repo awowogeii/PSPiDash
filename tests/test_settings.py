@@ -55,6 +55,12 @@ def test_apply_patch_ui_display():
     assert new["ui"]["theme"]["warn"] == BASE["ui"]["theme"]["warn"]  # merged, not replaced
     new = st.apply_patch(BASE, {"ui": {"tile_style": "analog"}})
     assert new["ui"]["tile_style"] == "analog"
+    new = st.apply_patch(BASE, {"ui": {"page2_tiles": ["rpm", "map_kpa", "baro_kpa",
+                                                       "ign_adv", "inj_ms", "inj_duty",
+                                                       "analog1", "analog2"]}})
+    assert new["ui"]["page2_tiles"][0] == "rpm"
+    with pytest.raises(ValueError):
+        st.apply_patch(BASE, {"ui": {"page2_tiles": ["rpm"]}})   # needs exactly 8
     new = st.apply_patch(BASE, {"ui": {"danger_rpm": 8200}})
     assert new["ui"]["danger_rpm"] == 8200.0
     new = st.apply_patch(new, {"ui": {"danger_rpm": None}})   # blank turns it off

@@ -33,6 +33,15 @@ ui:
   - vbat
   tile_style: analog_digital
   danger_rpm: 8000              # full-screen danger-to-manifold warning; blank/absent = off
+  page2_tiles:                  # START button page: 2x4 sensors, no rpm/vtec/shift
+  - map_kpa
+  - baro_kpa
+  - ign_adv
+  - inj_duty
+  - knock_retard
+  - knock_count
+  - ect_c
+  - vbat
   theme:
     bg: '#10002b'
     tile: '#240046'

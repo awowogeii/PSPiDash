@@ -1,5 +1,7 @@
 #!/bin/bash
-# s300-cluster installer for Raspberry Pi OS (Trixie) Lite on a CM4 / PSPi 6.
+# s300-cluster installer for Raspberry Pi OS Trixie (Lite or standard/desktop)
+# on a CM4 / PSPi 6. On the desktop image the graphical login is disabled so
+# the cluster owns the display (re-enable: see INSTALL.md).
 #
 #   sudo ./deploy/install.sh              full install (packages, user, services, hotspot, boot tuning)
 #   sudo ./deploy/install.sh --update     just re-copy the code + restart services
@@ -31,8 +33,10 @@ if [ $UPDATE = 0 ]; then
   apt-get update -q
   DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
     python3 python3-aiohttp python3-yaml python3-pygame fonts-dejavu-core \
-    bluez network-manager rsync
+    bluez network-manager dnsmasq-base rsync
   # aiohttp on Trixie is new enough (>=3.9) for the daemon.
+  # dnsmasq-base is NM's DHCP server for the hotspot: without it phones
+  # associate but never get an IP (--no-install-recommends skips it).
 
   step "user '$USER_NAME'"
   id "$USER_NAME" >/dev/null 2>&1 || useradd -r -m -s /usr/sbin/nologin "$USER_NAME"
@@ -61,14 +65,51 @@ EOF
 mkdir -p /etc/s300-cluster; ln -sfn "$DATA/config.yaml" /etc/s300-cluster/config.yaml
 
 step "systemd services"
-install -m 644 "$SRC/deploy/s300d.service" "$SRC/deploy/s300ui.service" /etc/systemd/system/
+install -m 644 "$SRC/deploy/s300d.service" "$SRC/deploy/s300ui.service" \
+  "$SRC/deploy/cluster-toggle.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable s300d.service s300ui.service >/dev/null
 systemctl disable getty@tty1.service >/dev/null 2>&1 || true
 systemctl restart s300d.service s300ui.service
 
+if [ $UPDATE = 0 ]; then
+  step "display + power behaviour"
+  # standard (desktop) image: boot to the cluster, not the desktop session.
+  # The desktop stays installed; re-enable per INSTALL.md.
+  systemctl set-default multi-user.target >/dev/null 2>&1 || true
+  if systemctl is-enabled lightdm.service >/dev/null 2>&1; then
+    systemctl disable lightdm.service >/dev/null 2>&1 || true
+    echo "   desktop login disabled - the Pi now boots straight to the cluster"
+  fi
+  if systemctl cat lightdm.service >/dev/null 2>&1; then
+    # Home/PS button toggles cluster <-> desktop (deploy/cluster_toggle.py)
+    systemctl enable --now cluster-toggle.service >/dev/null 2>&1 || true
+    echo "   Home button toggles cluster <-> desktop"
+    if [ -n "${SUDO_USER:-}" ]; then
+      # land on the desktop, not a greeter you can't type a password into
+      mkdir -p /etc/lightdm/lightdm.conf.d
+      printf '[Seat:*]\nautologin-user=%s\n' "$SUDO_USER" \
+        > /etc/lightdm/lightdm.conf.d/90-s300-autologin.conf
+      echo "   lightdm auto-login: $SUDO_USER"
+    fi
+  fi
+  raspi-config nonint do_squeekboard S3 >/dev/null 2>&1 || true   # no on-screen keyboard
+  raspi-config nonint do_blanking 1 >/dev/null 2>&1 || true       # never blank the screen
+  # never suspend: powered on means screen + services on
+  systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target \
+    >/dev/null 2>&1 || true
+  # keep SSH reachable on the hotspot IP
+  raspi-config nonint do_ssh 0 >/dev/null 2>&1 || systemctl enable --now ssh >/dev/null 2>&1 || true
+fi
+
 if [ $UPDATE = 0 ] && [ $HOTSPOT = 1 ]; then
   step "wifi hotspot for the phone settings page"
+  # a fresh image ships WiFi rfkill-blocked until a country is set
+  if [ -z "$(raspi-config nonint get_wifi_country 2>/dev/null)" ]; then
+    raspi-config nonint do_wifi_country AU >/dev/null 2>&1 || true
+    echo "   WiFi country set to AU (change: sudo raspi-config nonint do_wifi_country <CC>)"
+  fi
+  rfkill unblock wifi 2>/dev/null || true
   CFG="$DATA/config.yaml" "$SRC/deploy/hotspot.sh" on || echo "   (hotspot failed - is wlan0 present? re-run deploy/hotspot.sh on later)"
 fi
 

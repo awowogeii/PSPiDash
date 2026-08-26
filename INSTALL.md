@@ -1,4 +1,10 @@
-# Installing the cluster on the PSPi 6 (CM4, Raspberry Pi OS Trixie Lite)
+# Installing the cluster on the PSPi 6 (CM4, Raspberry Pi OS Trixie)
+
+Works on Trixie **Lite** (recommended) and **standard/desktop**. On the
+desktop image the installer switches the boot target to the cluster and
+disables the graphical login — the desktop stays installed. To get it back:
+
+    sudo systemctl set-default graphical.target && sudo systemctl enable lightdm
 
 Two routes to the same result. Route A if the Pi already boots and you can SSH
 to it; Route B from a blank eMMC. Both end with the same `install.sh`.
@@ -33,10 +39,17 @@ On your laptop, in the repo:
 That rsyncs the repo to `/tmp/s300-cluster` on the Pi and runs
 `sudo deploy/install.sh`, which:
 
-- installs `python3-aiohttp python3-yaml python3-pygame fonts-dejavu-core network-manager`
+- installs `python3-aiohttp python3-yaml python3-pygame fonts-dejavu-core
+  network-manager dnsmasq-base` (dnsmasq-base is the hotspot's DHCP server —
+  without it phones connect but never get an IP)
 - creates the `cluster` user (groups video/render/input/tty/bluetooth)
 - copies the code, installs and starts both services, removes the tty1 login
-- brings up the WiFi hotspot
+- on the desktop image: boots to the cluster instead of the desktop; disables
+  the on-screen keyboard (Squeekboard); disables screen blanking; masks
+  suspend/hibernate so the device stays on as long as it has power; makes
+  sure SSH is enabled
+- sets the WiFi country to AU if none is set (fresh images ship rfkill-blocked,
+  which silently kills the hotspot), then brings up the WiFi hotspot
 - applies boot-time tuning (`boot_delay=0`, `disable_splash=1`, quiet kernel
   cmdline, disables apt/man-db timers, eeprom updater, ModemManager, timesyncd,
   and `NetworkManager-wait-online`)
@@ -102,15 +115,24 @@ Saves are atomic (temp file + rename) and hot-reloaded; nothing restarts.
 
 ## Buttons on the PSPi 6
 
-- A (joystick button 0): acknowledge latched critical alarms
-- SELECT (button 6): release / resume the Bluetooth link
+The PSPi gamepad driver presents a "PS3 Controller"; the cluster uses:
 
-Button numbers differ between PSPi firmware versions. Check yours with
-`python3 -c "import pygame;..."` or just watch `journalctl -fu s300ui` and
-override under `ui.buttons` in `config.yaml`:
+- **× cross** (button 0): acknowledge latched critical alarms
+- **SELECT** (button 8): release / resume the Bluetooth link
+- **START** (button 9): toggle the second sensor-only page (2×4 tiles,
+  no rpm bar / VTEC / shift light; pick its sensors on the phone page)
+- **HOME / PS** (button 10): switch between the cluster and the desktop.
+  Handled by `cluster-toggle.service` (desktop images only) — it works from
+  either side, and the installer sets lightdm auto-login so you never land
+  on a password prompt.
+
+On a laptop: Enter/Space = ack, R = release/resume, Tab/P = page toggle.
+
+If a different driver build numbers the buttons differently, watch
+`journalctl -fu s300ui` while pressing and override under `ui.buttons`:
 
     ui:
-      buttons: {ack: 0, release: 6, resume: 6}
+      buttons: {ack: 0, release: 8, resume: 8, page: 9}
 
 ## Boot time
 
@@ -132,6 +154,16 @@ data arrives.
     ls -l /dev/dri/             # card0 must exist for kmsdrm
     bluetoothctl info <MAC>     # Paired: yes, Trusted: yes
 
+- Hotspot visible, phone connects, but SSH/settings page unreachable: the
+  phone almost certainly has no IP (check its WiFi details). Install
+  `dnsmasq-base` and re-run `sudo deploy/hotspot.sh on` — the script now
+  checks for this and for rfkill and says exactly what is wrong.
+- No hotspot at boot: it was never created (install-time attempt failed,
+  usually rfkill). `sudo deploy/hotspot.sh on` creates the NetworkManager
+  profile with autoconnect, so once it succeeds it persists across reboots.
+- Settings page dead right after boot but hotspot fine: the daemon now
+  retries the bind every 5 s until the hotspot IP exists, so give it a few
+  seconds; `journalctl -u s300d | grep bind` shows the retries.
 - "BT ERROR" forever: something else holds the RFCOMM channel (phone app /
   SManager). Close it; the daemon retries with backoff automatically.
 - "IGN OFF": normal with the key off; the daemon polls every 10 s.

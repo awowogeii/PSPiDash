@@ -7,6 +7,15 @@ NAME=delsol-hotspot
 get() { python3 -c "import yaml,sys;print((yaml.safe_load(open('$CFG')).get('hotspot') or {}).get('$1',''))"; }
 case "${1:-}" in
   on)
+    rfkill unblock wifi 2>/dev/null || true
+    if rfkill list wifi 2>/dev/null | grep -q "blocked: yes"; then
+      echo "!! WiFi is rfkill-blocked. Set a country first:"
+      echo "   sudo raspi-config nonint do_wifi_country AU"; exit 1
+    fi
+    if [ ! -x /usr/sbin/dnsmasq ] && ! command -v dnsmasq >/dev/null 2>&1; then
+      echo "!! dnsmasq-base is missing - phones would connect but never get an IP."
+      echo "   sudo apt-get install -y dnsmasq-base"; exit 1
+    fi
     SSID=$(get ssid); PSK=$(get password); IP=$(get ip)
     nmcli -t -f NAME con show | grep -qx "$NAME" && nmcli con delete "$NAME" >/dev/null
     nmcli con add type wifi ifname wlan0 con-name "$NAME" autoconnect yes ssid "$SSID" \

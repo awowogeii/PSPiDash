@@ -155,6 +155,16 @@ def test_gauge_zones_from_thresholds():
     assert L.gauge_zones(0, 10, 20, 30, "above") == []
 
 
+def test_page2_defaults_and_geometry():
+    assert len(L.DEFAULT_TILES["page2"]) == 8
+    assert set(L.DEFAULT_TILES["page2"]) <= set(L.SENSORS)
+    top, bottom = L.page2_rows()
+    assert top[1] + top[3] < bottom[1]           # rows don't overlap
+    assert bottom[1] + bottom[3] < 428           # footer starts at 428
+    assert L.normalize_tiles(["rpm"], L.DEFAULT_TILES["page2"])[0] == "rpm"
+    assert len(L.normalize_tiles(None, L.DEFAULT_TILES["page2"])) == 8
+
+
 def test_danger_state_hysteresis():
     assert L.danger_state(False, 8000, 8000) is True    # trips at the line
     assert L.danger_state(False, 7999, 8000) is False
