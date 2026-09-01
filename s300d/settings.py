@@ -229,7 +229,7 @@ def make_app(hub, config_path):
 PAGE = r"""<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Del Sol cluster settings</title>
+<title>Cluster Settings</title>
 <style>
 :root{--bg:#0b0d10;--card:#151a20;--fg:#eae6da;--mut:#7d8791;--acc:#ffb400;--ok:#3ac569;--bad:#e02020;--line:#232a32}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 -apple-system,system-ui,sans-serif}
@@ -248,7 +248,7 @@ button{background:var(--acc);color:#000;border:0;border-radius:10px;padding:12px
 #msg{font-size:14px;color:var(--mut)}.badge{padding:2px 8px;border-radius:99px;font-size:12px;background:#333}.badge.ok{background:var(--ok);color:#000}.badge.bad{background:var(--bad)}
 .hint{color:var(--mut);font-size:12px;margin:4px 16px}
 </style></head><body>
-<header><h1>Del Sol cluster</h1><span id="state" class="badge">…</span></header>
+<header><h1>Cluster Settings</h1><span id="state" class="badge">…</span></header>
 
 <h2>Live</h2>
 <div class="card"><div class="live" id="live"></div>

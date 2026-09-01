@@ -166,7 +166,7 @@ def alarm_banner(alarms):
     level = "critical" if crit else "warn"
     text = "  ".join(a["id"].replace("_", " ").upper() for a in picked)
     if crit and any(a.get("latched") for a in crit):
-        text += "  [press × to ack]"
+        text += "  [press X to Ack]"
     return level, text
 
 

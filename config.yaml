@@ -32,8 +32,8 @@ ui:
   - ect_c
   - vbat
   tile_style: analog_digital
-  danger_rpm: 8000              # full-screen danger-to-manifold warning; blank/absent = off
-  page2_tiles:                  # START button page: 2x4 sensors, no rpm/vtec/shift
+  danger_rpm: 8000.0
+  page2_tiles:
   - map_kpa
   - baro_kpa
   - ign_adv
