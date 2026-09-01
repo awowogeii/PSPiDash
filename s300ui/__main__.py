@@ -82,6 +82,7 @@ def main(argv=None):
             if ev.type == pygame.QUIT:
                 running = False
             elif ev.type == pygame.JOYDEVICEADDED:
+                # the PSPi gamepad driver may create its device after we start;
                 # without this the buttons stay dead until a UI restart
                 sticks.append(pygame.joystick.Joystick(ev.device_index))
                 log.info("joystick connected (%d total)", len(sticks))
