@@ -2,6 +2,9 @@
 Description=s300d - Hondata S300 datalog daemon
 After=bluetooth.service
 Wants=bluetooth.service
+# retry forever: systemd's default 5-failures-in-10s limit would otherwise
+# leave the daemon permanently dead after a burst of fast crashes at boot
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple

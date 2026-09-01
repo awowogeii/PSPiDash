@@ -2,6 +2,9 @@
 Description=s300ui - native gauge cluster on DRM/KMS
 After=s300d.service
 Wants=s300d.service
+# retry forever: kmsdrm fails instantly while the DPI panel/DRM device is
+# still coming up; the default rate limit would give up after ~5 seconds
+StartLimitIntervalSec=0
 Conflicts=getty@tty1.service
 After=getty@tty1.service
 

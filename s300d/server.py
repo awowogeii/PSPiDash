@@ -245,8 +245,12 @@ def run(hub, server_cfg=None, ui_dir="ui", extra_sites=()):
                     return
                 except OSError as exc:
                     if not retry:
+                        # fatal: this socket is the daemon's whole purpose. Returning
+                        # would leave the process alive serving nothing - systemd sees
+                        # "active (running)", Restart=always never fires, and the
+                        # cluster shows NO DAEMON until someone restarts it by hand.
                         log.error("cannot bind %s:%d: %s", host, port, exc)
-                        return
+                        raise
                     # e.g. hotspot interface not up yet; keep trying so the
                     # settings page appears whenever the hotspot does
                     log.warning("cannot bind %s:%d (%s); retrying in 5s", host, port, exc)

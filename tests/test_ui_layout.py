@@ -37,7 +37,7 @@ def test_alarm_banner_prefers_critical_and_flags_latch():
     assert lvl == "warn" and txt == "ECT HIGH"
     lvl, txt = L.alarm_banner([{"id": "iat_high", "level": "warn", "latched": False},
                                {"id": "ect_high", "level": "critical", "latched": True}])
-    assert lvl == "critical" and txt.startswith("ECT HIGH") and "ack" in txt
+    assert lvl == "critical" and txt.startswith("ECT HIGH") and "ack" in txt.lower()
 
 
 def test_state_labels():

@@ -63,6 +63,10 @@ class DaemonClient:
                                 break
             except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as exc:
                 log.warning("daemon link: %s", exc)
+            except Exception:
+                # anything else must not kill this thread: a dead thread means
+                # "NO DAEMON" forever with no recovery until a UI restart
+                log.exception("daemon link: unexpected error; reconnecting")
             self.connected = False
             await asyncio.sleep(delay)
             delay = min(delay * 2, 5.0)

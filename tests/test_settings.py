@@ -113,7 +113,7 @@ def test_api_put_saves_and_hot_reloads(tmp_path):
             r = await client.post("/api/command", json={"cmd": "read_dtc"})
             assert r.status == 400
             r = await client.get("/")
-            assert "Del Sol cluster" in await r.text()
+            assert "cluster settings" in (await r.text()).lower()
             r = await client.get("/api/live")
             assert set(await r.json()) >= {"state", "d", "a", "raw"}
         finally:

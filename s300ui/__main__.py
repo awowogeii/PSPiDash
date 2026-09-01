@@ -81,6 +81,10 @@ def main(argv=None):
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 running = False
+            elif ev.type == pygame.JOYDEVICEADDED:
+                # without this the buttons stay dead until a UI restart
+                sticks.append(pygame.joystick.Joystick(ev.device_index))
+                log.info("joystick connected (%d total)", len(sticks))
             elif ev.type == pygame.KEYDOWN:
                 if ev.key in (pygame.K_ESCAPE, pygame.K_q) and args.windowed:
                     running = False
